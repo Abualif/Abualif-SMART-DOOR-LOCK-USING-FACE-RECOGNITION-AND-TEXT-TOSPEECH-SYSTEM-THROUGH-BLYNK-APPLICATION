@@ -1,3 +1,17 @@
-# Abualif-SMART-DOOR-LOCK-USING-FACE-RECOGNITION-AND-TEXT-TOSPEECH-SYSTEM-THROUGH-BLYNK-APPLICATION
+# ESP32-CAM Access Control System
+Using an ESP32-CAM to unlock a door when a face is recognised.  A simple access control system based on face recognition with the ESP32-CAM and the Arduino IDE.
 
-This system is an IoT-based smart door lock built using an ESP32-CAM microcontroller as the core controller. The ESP32-CAM performs face detection and face recognition locally, utilizing its onboard face recognition library and real-time communication via WebSocket for streaming data and commands. User faces are registered through a web dashboard interface and stored in the ESP32-CAM’s local memory. When a face is detected and recognized, the ESP32-CAM activates a relay to control a solenoid lock (an electromechanical actuator) to unlock the door. The system connects to a WiFi network and leverages Blynk as the platform for monitoring, notifications, and manual control via smartphone. Additionally, the system features browser-based text-to-speech audio notifications. For remote public access, the ESP32-CAM is connected to a VPS using Fast Reverse Proxy (FRP), allowing the web dashboard and controls to remain accessible over the internet reliably
+![Interface](https://robotzero.one/wp-content/uploads/bfi_thumb/featured-master-1-6qb32y1978bm9yf6ne9nypfey83yf3pvisk7rozvfi8.jpg)  
+
+Note: If you are using release 1.0.5 of the ESP32 Arduino Hardware Libraries you can now run the entire project with just these files
+
+FaceDoorEntryESP32Cam.ino  
+camera_index.h  
+camera_pins.h  
+partitions.csv  
+
+There is no need to create new partitions in the Arduino IDE  
+
+Note: Releases 2.x.x of the ESP32 Hardware Libraries don't support face recognition on the ESP32 modules. The algorithm has been 'improved' and now runs too slowly on these processors.
+
+Full details on the blog: https://robotzero.one/access-control-with-face-recognition/

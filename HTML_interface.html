@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Face Recognition</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #121212;
+      color: white;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 40px;
+      color: #ffffff;
+    }
+
+    .dashboard {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      justify-content: center;
+      width: 100%;
+      max-width: 1400px;
+    }
+
+    .panel {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+      flex: 1;
+      min-width: 380px;
+      position: relative;
+      border: 3px solid;
+      border-image: linear-gradient(135deg, #00c6ff, #0072ff) 1;
+    }
+
+    .stream-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .notification {
+      position: fixed;
+      top: 30px;
+      right: 30px;
+      background: #ff5252;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      z-index: 9999;
+    }
+
+
+    #stream {
+      width: 100%;
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: inset 0 0 5px rgba(0, 188, 212, 0.5);
+    }
+
+    #status-display {
+      text-align: center;
+      padding: 14px;
+      background-color: green;
+      border-radius: 8px;
+      font-size: 1.25rem;
+      margin-bottom: 20px;
+    }
+
+    #access-log {
+      font-size: 0.95rem;
+      max-height: 180px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #2c2c2c;
+      color: white;
+      margin-bottom: 25px;
+      font-size: 1.2rem;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 25px;
+    }
+
+    button {
+      flex: 1;
+      min-width: 160px;
+      padding: 14px 20px;
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      border: none;
+      border-radius: 10px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 114, 255, 0.3);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 114, 255, 0.5);
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #333;
+      font-size: 1.1rem;
+    }
+
+    .delete {
+      background: #ff3034;
+      width: 28px;
+      height: 28px;
+      text-align: center;
+      line-height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Dashboard Face Recognition</h1>
+  <div class="dashboard">
+    <div class="panel stream-wrapper">
+      <img id="stream" src="">
+    </div>
+    <div class="panel">
+      <div id="status-display"><span id="current-status">Connecting...</span></div>
+      <input id="person" type="text" placeholder="Type the person's name here">
+      <div class="buttons">
+        <button id="button-stream">STREAM CAMERA</button>
+        <button id="button-detect">DETECT FACES</button>
+      </div>
+      <div class="buttons">
+        <button id="button-capture" title="Enter a name above before capturing a face">ADD USER</button>
+        <button id="button-recognise">ACCESS CONTROL</button>
+      </div>
+      <h3 style="margin-bottom: 14px; font-size: 1.3rem;">Captured Faces</h3>
+      <ul></ul>
+      <button id="delete_all">DELETE ALL</button>
+      <h3 style="margin-top: 20px;">Access Logs</h3>
+      <ul id="access-log" style="font-size: 0.95rem; max-height: 180px; overflow-y: auto;"></ul>
+      <button id="export-log" style="margin-top: 16px;">EXPORT ACCESS LOG</button>
+      <audio id="open-door-audio" src="/audiomass-output.mp3"></audio>
+    </div>
+  </div>
+  <script>
+    let systemEnabled = false;
+    let accessControlEnabled = false;
+    document.addEventListener("DOMContentLoaded", function (event) {
+      var baseHost = document.location.origin;
+      var streamUrl = baseHost + ":81";
+      const WS_URL = "ws://" + window.location.hostname + ":82";
+      const ws = new WebSocket(WS_URL);
+
+      const view = document.getElementById("stream");
+      const personFormField = document.getElementById("person");
+      const streamButton = document.getElementById("button-stream");
+      const detectButton = document.getElementById("button-detect");
+      const captureButton = document.getElementById("button-capture");
+      const recogniseButton = document.getElementById("button-recognise");
+      const deleteAllButton = document.getElementById("delete_all");
+
+      document.getElementById("export-log").onclick = () => {
+        const logs = Array.from(document.querySelectorAll("#access-log li")).map(li => li.textContent);
+        const csv = logs.join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "access_logs.csv";
+        a.click();
+      };
+
+
+      a = new AudioContext();
+      function alertSound(w, x, y) {
+        v = a.createOscillator();
+        u = a.createGain();
+        v.connect(u);
+        v.frequency.value = x;
+        v.type = "square";
+        u.connect(a.destination);
+        u.gain.value = w * 0.01;
+        v.start(a.currentTime);
+        v.stop(a.currentTime + y * 0.001);
+      }
+
+      ws.onopen = () => {
+        console.log(`Connected to ${WS_URL}`);
+        document.getElementById("current-status").innerText = "Connected";
+        document.getElementById("status-display").style.background = "gray";
+      };
+
+      ws.onmessage = message => {
+        if (typeof message.data === "string") {
+          if (message.data.substr(0, 8) == "listface") {
+            addFaceToScreen(message.data.substr(9));
+          } else if (message.data == "delete_faces") {
+            deleteAllFacesFromScreen();
+          } else if (message.data == "door_open") {
+            const audio = document.getElementById("open-door-audio");
+            audio.play().catch(e => {
+              console.warn("Autoplay blocked. User interaction required.");
+            });
+          } else if (message.data === "UNKNOWN FACE") {
+            const logList = document.getElementById("access-log");
+            const logItem = document.createElement("li");
+            logItem.textContent = new Date().toLocaleString() + " → Akses ditolak: Wajah tidak dikenal.";
+            logList.prepend(logItem);
+            showNotification("⚠️ Wajah tidak dikenal! Akses ditolak.");
+          } else {
+            // Bagian status seperti SYSTEM ON / OFF
+            const statusText = document.getElementById("current-status");
+            const statusBox = document.getElementById("status-display");
+            statusText.innerHTML = message.data;
+
+            if (message.data === "SYSTEM ON") {
+              statusBox.style.background = "green";
+              streamButton.innerText = "STOP STREAMING";
+              systemEnabled = true;
+              setControlButtons(true);
+            } else if (message.data === "SYSTEM OFF") {
+              statusBox.style.background = "darkred";
+              streamButton.innerText = "STREAM CAMERA";
+              view.src = "";
+              systemEnabled = false;
+              setControlButtons(false);
+            } else if (message.data.startsWith("DOOR OPEN FOR")) {
+              const logList = document.getElementById("access-log");
+              const logItem = document.createElement("li");
+              logItem.textContent = new Date().toLocaleString() + " → " + message.data;
+              logList.prepend(logItem);
+            }
+          }
+        } else if (message.data instanceof Blob) {
+          view.src = URL.createObjectURL(message.data);
+        }
+      };
+
+      streamButton.onclick = () => {
+        if (!systemEnabled) {
+          ws.send("stream_on");
+          streamButton.innerText = "STOP SYSTEM";
+          systemEnabled = true;
+        } else {
+          ws.send("stream_off");
+          streamButton.innerText = "STREAM CAMERA";
+          view.src = ""; // Kosongkan tampilan streaming saat sistem dimatikan
+          systemEnabled = false;
+        }
+      };
+
+      detectButton.onclick = () => ws.send("detect");
+      captureButton.onclick = () => {
+        const person_name = personFormField.value;
+        ws.send("capture:" + person_name);
+      };
+      recogniseButton.onclick = () => {
+        accessControlEnabled = !accessControlEnabled;
+
+        // Toggle flash
+        ws.send("access");
+
+        if (accessControlEnabled) {
+          ws.send("recognise");  // aktifkan face recognition
+          recogniseButton.style.background = "green";
+          recogniseButton.textContent = "STOP ACCESS CONTROL";
+        } else {
+          // Matikan pengenalan wajah dengan mengubah state di server jadi STREAM saja
+          ws.send("stream");  // kembali ke streaming biasa
+          recogniseButton.style.background = "red";
+          recogniseButton.textContent = "ACCESS CONTROL";
+        }
+      };
+      deleteAllButton.onclick = () => ws.send("delete_all");
+
+      personFormField.onkeyup = () => {
+        captureButton.disabled = !systemEnabled || personFormField.value.trim() === "";
+      };
+
+      function setControlButtons(enabled) {
+        detectButton.disabled = !enabled;
+        recogniseButton.disabled = !enabled;
+        deleteAllButton.disabled = !enabled;
+        captureButton.disabled = !enabled || personFormField.value.trim() === "";
+      }
+
+      function deleteAllFacesFromScreen() {
+        const faceList = document.querySelector(".panel ul"); // hanya list wajah
+        while (faceList.firstChild) faceList.firstChild.remove();
+        personFormField.value = "";
+        captureButton.disabled = true;
+      }
+
+      function showNotification(text) {
+        const notif = document.createElement("div");
+        notif.className = "notification";
+        notif.textContent = text;
+        document.body.appendChild(notif);
+
+        setTimeout(() => notif.remove(), 4000);
+      }
+
+
+      function addFaceToScreen(person_name) {
+        const allLists = document.querySelectorAll(".panel ul");
+        const faceList = Array.from(allLists).find(ul => ul.id !== "access-log");
+        const listItem = document.createElement("li");
+        const closeItem = document.createElement("span");
+        closeItem.classList.add("delete");
+        closeItem.id = person_name;
+        closeItem.addEventListener("click", function () {
+          ws.send("remove:" + person_name);
+        });
+        listItem.appendChild(document.createElement("strong")).textContent = person_name;
+        listItem.appendChild(closeItem).textContent = "X";
+        faceList.appendChild(listItem);
+      }
+      document.body.addEventListener("click", function allowAudio() {
+        const audio = document.getElementById("open-door-audio");
+        audio.play().then(() => {
+          audio.pause(); // agar tidak bunyi langsung
+        });
+        document.body.removeEventListener("click", allowAudio);
+      });
+
+
+      captureButton.disabled = true;
+    });
+  </script>
+</body>
+
+</html>
